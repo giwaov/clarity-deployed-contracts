@@ -1,0 +1,26 @@
+;; @contract Fee Collector
+;; @description Collects protocol fees and transfers to fee address
+;; @version 0.1
+
+(use-trait ft .sip-010-trait.sip-010-trait)
+
+(define-constant ERR_INSUFFICIENT_BALANCE (err u107001))
+
+;;-------------------------------------
+;; Withdrawal
+;;-------------------------------------
+
+;; @desc - transfers asset to fee address
+(define-public (withdraw (asset <ft>))
+  (let (
+    (asset-contract (contract-of asset))
+    (balance (try! (contract-call? asset get-balance current-contract)))
+    (fee-address (contract-call? .test-state-hbtc-v6 get-fee-address))
+  )
+    (try! (contract-call? .test-state-hbtc-v6 check-is-transfer-enabled))
+    (try! (contract-call? .test-state-hbtc-v6 check-is-asset asset-contract))
+    (asserts! (> balance u0) ERR_INSUFFICIENT_BALANCE)
+    (print { action: "withdraw", user: contract-caller, data: { asset: asset, amount: balance, recipient: fee-address, sender: current-contract, balance: balance }})
+    (as-contract? ((with-ft (contract-of asset) "*" balance)) (try! (contract-call? asset transfer balance current-contract fee-address none)))
+  )
+)

@@ -1,0 +1,10 @@
+;; Media
+(define-map media uint {owner: principal, url: (string-ascii 200), type: (string-ascii 20)})
+(define-data-var media-id uint u0)
+(define-public (upload-media (url (string-ascii 200)) (type (string-ascii 20)))
+  (let ((id (var-get media-id)))
+    (map-set media id {owner: tx-sender, url: url, type: type})
+    (var-set media-id (+ id u1))
+    (ok id)))
+(define-read-only (get-media (id uint))
+  (map-get? media id))

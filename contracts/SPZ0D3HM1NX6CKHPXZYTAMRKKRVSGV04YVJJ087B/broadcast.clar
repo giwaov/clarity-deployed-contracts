@@ -1,0 +1,10 @@
+;; Broadcasts
+(define-map broadcasts uint {sender: principal, message: (string-ascii 300), priority: uint})
+(define-data-var broadcast-id uint u0)
+(define-public (create-broadcast (message (string-ascii 300)) (priority uint))
+  (let ((id (var-get broadcast-id)))
+    (map-set broadcasts id {sender: tx-sender, message: message, priority: priority})
+    (var-set broadcast-id (+ id u1))
+    (ok id)))
+(define-read-only (get-broadcast (id uint))
+  (map-get? broadcasts id))
