@@ -1,0 +1,18 @@
+---
+title: "Contract STXANTA-AIRDROP-FOR-NOT-ML"
+draft: true
+---
+Deployer: SP2P1DFKBG6PH922B02BE2KSE458ZYQG0DEWA2KWY
+
+
+ 
+
+
+
+Block height: 5254198 (2025-12-11T18:51:07.000Z)
+
+Source code: {{<contractref "STXANTA-AIRDROP-FOR-NOT-ML" SP2P1DFKBG6PH922B02BE2KSE458ZYQG0DEWA2KWY STXANTA-AIRDROP-FOR-NOT-ML>}}
+
+Functions:
+
+* send-stx _private_

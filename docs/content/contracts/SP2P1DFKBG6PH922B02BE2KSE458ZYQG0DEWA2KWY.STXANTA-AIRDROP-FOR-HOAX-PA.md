@@ -1,0 +1,18 @@
+---
+title: "Contract STXANTA-AIRDROP-FOR-HOAX-PA"
+draft: true
+---
+Deployer: SP2P1DFKBG6PH922B02BE2KSE458ZYQG0DEWA2KWY
+
+
+ 
+
+
+
+Block height: 5254124 (2025-12-11T18:29:30.000Z)
+
+Source code: {{<contractref "STXANTA-AIRDROP-FOR-HOAX-PA" SP2P1DFKBG6PH922B02BE2KSE458ZYQG0DEWA2KWY STXANTA-AIRDROP-FOR-HOAX-PA>}}
+
+Functions:
+
+* send-stx _private_

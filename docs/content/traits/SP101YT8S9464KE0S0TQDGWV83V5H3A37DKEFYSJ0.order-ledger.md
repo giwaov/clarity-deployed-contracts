@@ -1,0 +1,17 @@
+---
+title: "Trait order-ledger"
+draft: true
+---
+```
+;; Order Ledger
+(define-map orders uint {buyer: principal, seller: principal, total: uint, status: (string-ascii 20)})
+(define-data-var order-id uint u0)
+(define-public (create-order (seller principal) (total uint))
+  (let ((id (var-get order-id)))
+    (map-set orders id {buyer: tx-sender, seller: seller, total: total, status: "pending"})
+    (var-set order-id (+ id u1))
+    (ok id)))
+(define-read-only (get-order (id uint))
+  (map-get? orders id))
+
+```

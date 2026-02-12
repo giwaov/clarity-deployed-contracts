@@ -1,0 +1,17 @@
+---
+title: "Trait projects"
+draft: true
+---
+```
+;; Projects
+(define-map projects uint {owner: principal, name: (string-ascii 100), status: (string-ascii 20)})
+(define-data-var project-id uint u0)
+(define-public (create-project (name (string-ascii 100)))
+  (let ((id (var-get project-id)))
+    (map-set projects id {owner: tx-sender, name: name, status: "active"})
+    (var-set project-id (+ id u1))
+    (ok id)))
+(define-read-only (get-project (id uint))
+  (map-get? projects id))
+
+```

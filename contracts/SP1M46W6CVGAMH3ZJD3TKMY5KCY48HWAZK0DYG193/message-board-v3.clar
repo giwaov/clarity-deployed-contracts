@@ -1,0 +1,357 @@
+;; message-board.clar
+;; Core contract for Bitchat on-chain message board
+;; Security Enhanced Version - v3
+
+;; Constants - Error Codes
+(define-constant err-owner-only (err u100))
+(define-constant err-not-found (err u101))
+(define-constant err-unauthorized (err u102))
+(define-constant err-invalid-input (err u103))
+(define-constant err-already-reacted (err u105))
+(define-constant err-too-soon (err u106))
+(define-constant err-contract-paused (err u107))
+(define-constant err-insufficient-balance (err u108))
+
+;; Configuration
+(define-constant min-message-length u1)
+(define-constant max-message-length u280)
+(define-constant default-expiry-blocks u144) ;; ~24 hours
+(define-constant pin-24hr-blocks u144)
+(define-constant pin-72hr-blocks u432)
+(define-constant min-post-gap u6) ;; ~1 hour between posts (spam prevention)
+
+;; Fee structure (in microSTX)
+(define-constant fee-post-message u10000)        ;; 0.00001 STX (~$0.0003)
+(define-constant fee-pin-24hr u50000)            ;; 0.00005 STX (~$0.0015)
+(define-constant fee-pin-72hr u100000)           ;; 0.0001 STX (~$0.003)
+(define-constant fee-reaction u5000)             ;; 0.000005 STX (~$0.00015)
+
+;; Data variables
+(define-data-var message-nonce uint u0)
+(define-data-var total-messages uint u0)
+(define-data-var total-fees-collected uint u0)
+(define-data-var contract-owner principal tx-sender)
+(define-data-var contract-paused bool false)
+
+;; Data maps
+(define-map messages
+  { message-id: uint }
+  {
+    author: principal,
+    content: (string-utf8 280),
+    timestamp: uint,
+    block-height: uint,
+    expires-at: uint,
+    pinned: bool,
+    pin-expires-at: uint,
+    reaction-count: uint
+  }
+)
+
+(define-map user-stats
+  { user: principal }
+  {
+    messages-posted: uint,
+    total-spent: uint,
+    last-post-block: uint
+  }
+)
+
+(define-map reactions
+  { message-id: uint, user: principal }
+  { reacted: bool }
+)
+
+;; Private functions
+(define-private (get-next-message-id)
+  (let ((current-nonce (var-get message-nonce)))
+    (var-set message-nonce (+ current-nonce u1))
+    current-nonce
+  )
+)
+
+(define-private (calculate-expiry-block (duration uint))
+  (+ block-height duration)
+)
+
+(define-private (get-pin-fee (duration uint))
+  (if (is-eq duration pin-24hr-blocks)
+    fee-pin-24hr
+    (if (is-eq duration pin-72hr-blocks)
+      fee-pin-72hr
+      u0
+    )
+  )
+)
+
+;; Public functions
+(define-public (post-message (content (string-utf8 280)))
+  (let
+    (
+      (message-id (get-next-message-id))
+      (content-length (len content))
+      (sender tx-sender)
+      (expiry-block (calculate-expiry-block default-expiry-blocks))
+      (current-stats (default-to 
+        { messages-posted: u0, total-spent: u0, last-post-block: u0 }
+        (map-get? user-stats { user: sender })
+      ))
+      (last-post (get last-post-block current-stats))
+    )
+    ;; Security: Check if contract is paused
+    (asserts! (not (var-get contract-paused)) err-contract-paused)
+    
+    ;; Validate message length
+    (asserts! (>= content-length min-message-length) err-invalid-input)
+    (asserts! (<= content-length max-message-length) err-invalid-input)
+    
+    ;; Spam prevention: Enforce minimum gap between posts
+    (asserts! (or (is-eq last-post u0) 
+                  (>= (- block-height last-post) min-post-gap)) 
+      err-too-soon)
+    
+    ;; Collect posting fee - SECURITY FIX: Proper fee collection
+    (try! (stx-transfer? fee-post-message sender (as-contract tx-sender)))
+    
+    ;; Update fee counter
+    (var-set total-fees-collected (+ (var-get total-fees-collected) fee-post-message))
+    
+    ;; Store message
+    (map-set messages
+      { message-id: message-id }
+      {
+        author: sender,
+        content: content,
+        timestamp: burn-block-height,
+        block-height: block-height,
+        expires-at: expiry-block,
+        pinned: false,
+        pin-expires-at: u0,
+        reaction-count: u0
+      }
+    )
+    
+    ;; Increment total messages counter
+    (var-set total-messages (+ (var-get total-messages) u1))
+    
+    ;; Update user stats
+    (map-set user-stats
+      { user: sender }
+      {
+        messages-posted: (+ (get messages-posted current-stats) u1),
+        total-spent: (+ (get total-spent current-stats) fee-post-message),
+        last-post-block: block-height
+      }
+    )
+    
+    ;; Event logging
+    (print {
+      event: "message-posted",
+      message-id: message-id,
+      author: sender,
+      block: block-height
+    })
+    
+    (ok message-id)
+  )
+)
+
+;; Read-only functions
+(define-read-only (get-message (message-id uint))
+  (map-get? messages { message-id: message-id })
+)
+
+(define-read-only (get-user-stats (user principal))
+  (map-get? user-stats { user: user })
+)
+
+(define-read-only (get-total-messages)
+  (ok (var-get total-messages))
+)
+
+(define-read-only (get-total-fees-collected)
+  (ok (var-get total-fees-collected))
+)
+
+(define-read-only (get-message-nonce)
+  (ok (var-get message-nonce))
+)
+
+(define-read-only (has-user-reacted (message-id uint) (user principal))
+  (default-to false (get reacted (map-get? reactions { message-id: message-id, user: user })))
+)
+
+(define-read-only (is-contract-paused)
+  (var-get contract-paused)
+)
+
+(define-read-only (get-contract-owner)
+  (ok (var-get contract-owner))
+)
+
+(define-read-only (is-message-pinned (message-id uint))
+  (match (map-get? messages { message-id: message-id })
+    message (and 
+      (get pinned message)
+      (> (get pin-expires-at message) block-height)
+    )
+    false
+  )
+)
+
+(define-public (pin-message (message-id uint) (duration uint))
+  (let
+    (
+      (message (unwrap! (map-get? messages { message-id: message-id }) err-not-found))
+      (sender tx-sender)
+      (message-author (get author message))
+      (pin-fee (get-pin-fee duration))
+      (pin-expiry (calculate-expiry-block duration))
+      (current-stats (default-to 
+        { messages-posted: u0, total-spent: u0, last-post-block: u0 }
+        (map-get? user-stats { user: sender })
+      ))
+    )
+    ;; Security: Check if contract is paused
+    (asserts! (not (var-get contract-paused)) err-contract-paused)
+    
+    ;; Validate message exists and sender is author
+    (asserts! (is-eq sender message-author) err-unauthorized)
+    
+    ;; Validate duration is supported
+    (asserts! (or (is-eq duration pin-24hr-blocks) (is-eq duration pin-72hr-blocks)) err-invalid-input)
+    
+    ;; Collect pin fee - SECURITY FIX: Proper fee collection
+    (try! (stx-transfer? pin-fee sender (as-contract tx-sender)))
+    
+    ;; Update fee counter
+    (var-set total-fees-collected (+ (var-get total-fees-collected) pin-fee))
+    
+    ;; Update message with pin status
+    (map-set messages
+      { message-id: message-id }
+      (merge message {
+        pinned: true,
+        pin-expires-at: pin-expiry
+      })
+    )
+    
+    ;; Update user stats with pin spending
+    (map-set user-stats
+      { user: sender }
+      {
+        messages-posted: (get messages-posted current-stats),
+        total-spent: (+ (get total-spent current-stats) pin-fee),
+        last-post-block: block-height
+      }
+    )
+    
+    ;; Event logging
+    (print {
+      event: "message-pinned",
+      message-id: message-id,
+      author: sender,
+      duration: duration,
+      expires: pin-expiry
+    })
+    
+    (ok true)
+  )
+)
+
+(define-public (react-to-message (message-id uint))
+  (let
+    (
+      (message (unwrap! (map-get? messages { message-id: message-id }) err-not-found))
+      (sender tx-sender)
+      (already-reacted (default-to false (get reacted (map-get? reactions { message-id: message-id, user: sender }))))
+      (current-reaction-count (get reaction-count message))
+      (current-stats (default-to 
+        { messages-posted: u0, total-spent: u0, last-post-block: u0 }
+        (map-get? user-stats { user: sender })
+      ))
+    )
+    ;; Security: Check if contract is paused
+    (asserts! (not (var-get contract-paused)) err-contract-paused)
+    
+    ;; Validate message exists
+    ;; Prevent duplicate reactions
+    (asserts! (not already-reacted) err-already-reacted)
+    
+    ;; Collect reaction fee - SECURITY FIX: Proper fee collection
+    (try! (stx-transfer? fee-reaction sender (as-contract tx-sender)))
+    
+    ;; Update fee counter
+    (var-set total-fees-collected (+ (var-get total-fees-collected) fee-reaction))
+    
+    ;; Store reaction  
+    (map-set reactions
+      { message-id: message-id, user: sender }
+      { reacted: true }
+    )
+    
+    ;; Increment reaction count on message
+    (map-set messages
+      { message-id: message-id }
+      (merge message {
+        reaction-count: (+ current-reaction-count u1)
+      })
+    )
+    
+    ;; Update user stats with reaction spending
+    (map-set user-stats
+      { user: sender }
+      {
+        messages-posted: (get messages-posted current-stats),
+        total-spent: (+ (get total-spent current-stats) fee-reaction),
+        last-post-block: block-height
+      }
+    )
+    
+    ;; Event logging
+    (print {
+      event: "reaction-added",
+      message-id: message-id,
+      user: sender
+    })
+    
+    (ok true)
+  )
+)
+
+;; Administrative functions
+
+(define-public (withdraw-fees (amount uint) (recipient principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) err-owner-only)
+    (asserts! (<= amount (stx-get-balance (as-contract tx-sender))) err-insufficient-balance)
+    (as-contract (stx-transfer? amount tx-sender recipient))
+  )
+)
+
+(define-public (pause-contract)
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) err-owner-only)
+    (var-set contract-paused true)
+    (print { event: "contract-paused", by: tx-sender })
+    (ok true)
+  )
+)
+
+(define-public (unpause-contract)
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) err-owner-only)
+    (var-set contract-paused false)
+    (print { event: "contract-unpaused", by: tx-sender })
+    (ok true)
+  )
+)
+
+(define-public (transfer-ownership (new-owner principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) err-owner-only)
+    (var-set contract-owner new-owner)
+    (print { event: "ownership-transferred", from: tx-sender, to: new-owner })
+    (ok true)
+  )
+)

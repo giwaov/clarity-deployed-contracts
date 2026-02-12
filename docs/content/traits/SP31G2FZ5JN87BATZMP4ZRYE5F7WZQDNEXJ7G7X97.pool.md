@@ -1,0 +1,99 @@
+---
+title: "Trait pool"
+draft: true
+---
+```
+;; STACKS DEX - Constant Product AMM Pool Contract (Clarity 3)
+
+(use-trait ft-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+
+;; Fee configuration: 30 basis points = 0.30%
+(define-constant FEE_BPS u30)
+(define-constant BPS_DENOM u10000)
+
+;; Error codes
+(define-constant ERR_ZERO_INPUT (err u100))
+(define-constant ERR_ZERO_RESERVES (err u101))
+(define-constant ERR_DEADLINE_EXPIRED (err u102))
+(define-constant ERR_SLIPPAGE_EXCEEDED (err u103))
+(define-constant ERR_INSUFFICIENT_LIQUIDITY (err u104))
+(define-constant ERR_TRANSFER_X_FAILED (err u105))
+(define-constant ERR_TRANSFER_Y_FAILED (err u106))
+(define-constant ERR_FEE_TRANSFER_FAILED (err u107))
+(define-constant ERR_ALREADY_INITIALIZED (err u200))
+(define-constant ERR_NOT_INITIALIZED (err u201))
+
+;; Fee recipient - set when pool is initialized (YOU)
+(define-data-var fee-recipient (optional principal) none)
+(define-data-var reserve-x uint u0)
+(define-data-var reserve-y uint u0)
+(define-data-var total-fees-collected uint u0)
+
+(define-read-only (get-reserves)
+  { x: (var-get reserve-x), y: (var-get reserve-y) })
+
+(define-read-only (get-fee-info)
+  { fee-bps: FEE_BPS, denom: BPS_DENOM, recipient: (var-get fee-recipient) })
+
+(define-read-only (get-total-fees)
+  (var-get total-fees-collected))
+
+(define-read-only (quote-x-for-y (dx uint))
+  (let ((rx (var-get reserve-x)) (ry (var-get reserve-y)))
+    (asserts! (> dx u0) ERR_ZERO_INPUT)
+    (asserts! (and (> rx u0) (> ry u0)) ERR_ZERO_RESERVES)
+    (let ((fee (/ (* dx FEE_BPS) BPS_DENOM))
+          (dx-to-pool (- dx fee))
+          (dy (/ (* ry dx-to-pool) (+ rx dx-to-pool))))
+      (asserts! (< dy ry) ERR_INSUFFICIENT_LIQUIDITY)
+      (ok dy))))
+
+(define-read-only (calculate-fee (dx uint))
+  (/ (* dx FEE_BPS) BPS_DENOM))
+
+(define-public (swap-x-for-y 
+    (token-x <ft-trait>)
+    (token-y <ft-trait>)
+    (dx uint)
+    (min-dy uint)
+    (recipient principal)
+    (deadline uint))
+  (let ((rx (var-get reserve-x))
+        (ry (var-get reserve-y))
+        (sender tx-sender)
+        (fee-addr (unwrap! (var-get fee-recipient) ERR_NOT_INITIALIZED)))
+    (asserts! (<= stacks-block-height deadline) ERR_DEADLINE_EXPIRED)
+    (asserts! (> dx u0) ERR_ZERO_INPUT)
+    (asserts! (and (> rx u0) (> ry u0)) ERR_ZERO_RESERVES)
+    (let ((fee (/ (* dx FEE_BPS) BPS_DENOM))
+          (dx-to-pool (- dx fee))
+          (dy (/ (* ry dx-to-pool) (+ rx dx-to-pool))))
+      (asserts! (>= dy min-dy) ERR_SLIPPAGE_EXCEEDED)
+      (asserts! (< dy ry) ERR_INSUFFICIENT_LIQUIDITY)
+      (if (> fee u0)
+        (unwrap! (contract-call? token-x transfer fee sender fee-addr none) ERR_FEE_TRANSFER_FAILED)
+        true)
+      (unwrap! (contract-call? token-x transfer dx-to-pool sender (as-contract tx-sender) none) ERR_TRANSFER_X_FAILED)
+      (unwrap! (as-contract (contract-call? token-y transfer dy tx-sender recipient none)) ERR_TRANSFER_Y_FAILED)
+      (var-set reserve-x (+ rx dx-to-pool))
+      (var-set reserve-y (- ry dy))
+      (var-set total-fees-collected (+ (var-get total-fees-collected) fee))
+      (ok { dx: dx, dy: dy, fee: fee, recipient: recipient }))))
+
+(define-public (initialize-pool 
+    (token-x <ft-trait>)
+    (token-y <ft-trait>)
+    (amount-x uint)
+    (amount-y uint))
+  (begin
+    (asserts! (and (is-eq (var-get reserve-x) u0) (is-eq (var-get reserve-y) u0)) ERR_ALREADY_INITIALIZED)
+    (var-set fee-recipient (some tx-sender))
+    (unwrap! (contract-call? token-x transfer amount-x tx-sender (as-contract tx-sender) none) ERR_TRANSFER_X_FAILED)
+    (unwrap! (contract-call? token-y transfer amount-y tx-sender (as-contract tx-sender) none) ERR_TRANSFER_Y_FAILED)
+    (var-set reserve-x amount-x)
+    (var-set reserve-y amount-y)
+    (ok { x: amount-x, y: amount-y, fee-recipient: tx-sender })))
+
+(define-read-only (get-contract-info)
+  { name: "stacks-dex-pool", version: "1.0.0", fee-bps: FEE_BPS, fee-recipient: (var-get fee-recipient), reserve-x: (var-get reserve-x), reserve-y: (var-get reserve-y), total-fees: (var-get total-fees-collected) })
+```

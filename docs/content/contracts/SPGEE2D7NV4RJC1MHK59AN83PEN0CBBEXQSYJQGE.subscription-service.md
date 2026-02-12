@@ -1,0 +1,24 @@
+---
+title: "Contract subscription-service"
+draft: true
+---
+Deployer: SPGEE2D7NV4RJC1MHK59AN83PEN0CBBEXQSYJQGE
+
+
+ 
+
+
+
+Block height: 5377476 (2025-12-19T02:55:05.000Z)
+
+Source code: {{<contractref "subscription-service" SPGEE2D7NV4RJC1MHK59AN83PEN0CBBEXQSYJQGE subscription-service>}}
+
+Functions:
+
+* cancel-subscription _public_
+* create-plan _public_
+* renew-subscription _public_
+* subscribe _public_
+* get-plan _read_only_
+* get-subscription _read_only_
+* is-subscription-active _read_only_

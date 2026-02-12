@@ -1,0 +1,17 @@
+---
+title: "Trait forums"
+draft: true
+---
+```
+;; Forums
+(define-map forums uint {name: (string-ascii 50), description: (string-ascii 200)})
+(define-data-var forum-id uint u0)
+(define-public (create-forum (name (string-ascii 50)) (description (string-ascii 200)))
+  (let ((id (var-get forum-id)))
+    (map-set forums id {name: name, description: description})
+    (var-set forum-id (+ id u1))
+    (ok id)))
+(define-read-only (get-forum (id uint))
+  (map-get? forums id))
+
+```

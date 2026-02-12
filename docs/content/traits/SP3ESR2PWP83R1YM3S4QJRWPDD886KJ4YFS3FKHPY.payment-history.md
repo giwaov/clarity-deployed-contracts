@@ -1,0 +1,17 @@
+---
+title: "Trait payment-history"
+draft: true
+---
+```
+;; Payment History
+(define-map payments uint {payer: principal, amount: uint, status: (string-ascii 20)})
+(define-data-var payment-id uint u0)
+(define-public (record-payment (amount uint) (status (string-ascii 20)))
+  (let ((id (var-get payment-id)))
+    (map-set payments id {payer: tx-sender, amount: amount, status: status})
+    (var-set payment-id (+ id u1))
+    (ok id)))
+(define-read-only (get-payment (id uint))
+  (map-get? payments id))
+
+```

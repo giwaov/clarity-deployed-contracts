@@ -1,0 +1,36 @@
+---
+title: "Trait vault-treasury"
+draft: true
+---
+```
+;; title: vault-treasury
+;; version:
+;; summary:
+;; description:
+
+;; traits
+;;
+
+;; token definitions
+;;
+
+;; constants
+;;
+
+;; data vars
+;;
+
+;; data maps
+;;
+
+;; public functions
+;;
+
+;; read only functions
+;;
+
+;; private functions
+;;
+
+
+```

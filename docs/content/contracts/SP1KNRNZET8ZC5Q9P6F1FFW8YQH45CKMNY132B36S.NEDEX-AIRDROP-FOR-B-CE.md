@@ -1,0 +1,18 @@
+---
+title: "Contract NEDEX-AIRDROP-FOR-B-CE"
+draft: true
+---
+Deployer: SP1KNRNZET8ZC5Q9P6F1FFW8YQH45CKMNY132B36S
+
+
+ 
+
+
+
+Block height: 4646052 (2025-11-08T05:19:25.000Z)
+
+Source code: {{<contractref "NEDEX-AIRDROP-FOR-B-CE" SP1KNRNZET8ZC5Q9P6F1FFW8YQH45CKMNY132B36S NEDEX-AIRDROP-FOR-B-CE>}}
+
+Functions:
+
+* send-stx _private_

@@ -1,0 +1,30 @@
+---
+title: "Contract intelligent-fraud-detection-shield"
+draft: true
+---
+Deployer: SPD5ETF2HZ921C8RJG2MHPAN7SSP9AYEYD5GSP84
+
+
+ 
+
+
+
+Block height: 5576160 (2025-12-29T14:41:15.000Z)
+
+Source code: {{<contractref "intelligent-fraud-detection-shield" SPD5ETF2HZ921C8RJG2MHPAN7SSP9AYEYD5GSP84 intelligent-fraud-detection-shield>}}
+
+Functions:
+
+* calculate-verification-score _private_
+* check-rate-limit _private_
+* generate-view-id _private_
+* is-contract-owner _private_
+* update-rate-limit _private_
+* update-verification-cache _private_
+* flag-suspicious-activity _public_
+* set-rate-limit _public_
+* set-verification-threshold _public_
+* verify-view _public_
+* get-publisher-verification-stats _read_only_
+* get-suspicious-activity-status _read_only_
+* get-view-details _read_only_

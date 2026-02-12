@@ -1,0 +1,17 @@
+---
+title: "Trait announcements"
+draft: true
+---
+```
+;; Announcements
+(define-map announcements uint {title: (string-ascii 100), content: (string-ascii 500)})
+(define-data-var announcement-id uint u0)
+(define-public (create-announcement (title (string-ascii 100)) (content (string-ascii 500)))
+  (let ((id (var-get announcement-id)))
+    (map-set announcements id {title: title, content: content})
+    (var-set announcement-id (+ id u1))
+    (ok id)))
+(define-read-only (get-announcement (id uint))
+  (map-get? announcements id))
+
+```

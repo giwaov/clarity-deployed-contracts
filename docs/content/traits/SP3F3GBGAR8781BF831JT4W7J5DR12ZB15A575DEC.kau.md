@@ -1,0 +1,65 @@
+---
+title: "Trait kau"
+draft: true
+---
+```
+(use-trait ft1 'SP2AKWJYC7BNY18W1XXKPGP0YVEK63QJG4793Z2D4.sip-010-trait-ft-standard.sip-010-trait)
+(use-trait xpt1 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-pool-trait-v-1-2.xyk-pool-trait)
+(use-trait ft2 'SP2AKWJYC7BNY18W1XXKPGP0YVEK63QJG4793Z2D4.sip-010-trait-ft-standard.sip-010-trait)
+(use-trait upt2 'SP1Y5YSTAHZ88XYK1VPDH24GY0HPX5J4JECTMY4A1.univ2-pool-trait_v1_0_0.univ2-pool-trait)
+(use-trait uft2 'SP1Y5YSTAHZ88XYK1VPDH24GY0HPX5J4JECTMY4A1.univ2-fees-trait_v1_0_0.univ2-fees-trait)
+
+(define-constant e1 (err u5001))
+(define-constant e2 (err u5002))
+(define-constant e3 (err u5003))
+(define-constant e4 (err u5004))
+(define-constant e5 (err u5005))
+
+(define-public (toni
+    (a1 uint)
+    (m uint)
+    (p1 (optional principal))
+    (xt1 (tuple (a <ft1>) (b <ft1>)))
+    (xp1 (tuple (a <xpt1>)))
+    (a2 (optional uint))
+    (m2 uint)
+    (p2 (optional principal))
+    (ti2 <ft2>)
+    (to2 <ft2>)
+    (up2 <upt2>)
+    (uf2 <uft2>)
+  )
+  (let (
+    (r1 (try! (call-a a1 m p1 xt1 xp1)))
+    (a-for-r2 (if (is-some a2) (unwrap! a2 e5) r1))
+    (r2 (try! (call-b a-for-r2 m2 p2 ti2 to2 up2 uf2)))
+  )
+    (ok { r1: r1, r2: r2 })
+  )
+)
+
+(define-private (call-a
+    (a1 uint)
+    (m uint)
+    (p1 (optional principal))
+    (xt1 (tuple (a <ft1>) (b <ft1>)))
+    (xp1 (tuple (a <xpt1>)))
+  )
+  (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-swap-helper-v-1-3 swap-helper-a
+    a1 m p1 xt1 xp1)
+)
+
+(define-private (call-b
+    (a2 uint)
+    (m2 uint)
+    (p2 (optional principal))
+    (ti2 <ft2>)
+    (to2 <ft2>)
+    (up2 <upt2>)
+    (uf2 <uft2>)
+  )
+  (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.wrapper-velar-path-v-1-2 swap-univ2v2
+    a2 ti2 to2 up2 uf2 p2)
+)
+
+```

@@ -1,0 +1,24 @@
+---
+title: "Contract health-factor-monitor"
+draft: true
+---
+Deployer: SPXQTAY82XX699XMKAH7GXT3M6S76HESZJQWD8KW
+
+
+ 
+
+
+
+Block height: 6226043 (2026-01-31T01:05:19.000Z)
+
+Source code: {{<contractref "health-factor-monitor" SPXQTAY82XX699XMKAH7GXT3M6S76HESZJQWD8KW health-factor-monitor>}}
+
+Functions:
+
+* determine-health-status _private_
+* update-health-factor _public_
+* format-health _read_only_
+* get-health-factor _read_only_
+* get-hfm-timestamps _read_only_
+* parse-health-str _read_only_
+* validate-pos _read_only_

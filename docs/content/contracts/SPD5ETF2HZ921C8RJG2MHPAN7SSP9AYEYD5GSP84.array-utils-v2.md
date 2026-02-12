@@ -1,0 +1,30 @@
+---
+title: "Contract array-utils-v2"
+draft: true
+---
+Deployer: SPD5ETF2HZ921C8RJG2MHPAN7SSP9AYEYD5GSP84
+
+
+ 
+
+
+
+Block height: 5412332 (2025-12-20T21:07:42.000Z)
+
+Source code: {{<contractref "array-utils-v2" SPD5ETF2HZ921C8RJG2MHPAN7SSP9AYEYD5GSP84 array-utils-v2>}}
+
+Functions:
+
+* find-max _private_
+* find-min _private_
+* is-greater _private_
+* average _read_only_
+* contains-uint _read_only_
+* count-greater-than _read_only_
+* get-first _read_only_
+* get-last _read_only_
+* list-length _read_only_
+* max-in-list _read_only_
+* median _read_only_
+* min-in-list _read_only_
+* sum-list _read_only_

@@ -1,0 +1,19 @@
+---
+title: "Contract nova-audit-log-verifier"
+draft: true
+---
+Deployer: SP2KZ109PC2HRFH8T37ZD8VAQF2DK38RTXQSBK80T
+
+
+ 
+
+
+
+Block height: 6211923 (2026-01-30T09:08:01.000Z)
+
+Source code: {{<contractref "nova-audit-log-verifier" SP2KZ109PC2HRFH8T37ZD8VAQF2DK38RTXQSBK80T nova-audit-log-verifier>}}
+
+Functions:
+
+* set-status _public_
+* get-status _read_only_

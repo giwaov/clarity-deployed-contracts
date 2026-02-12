@@ -1,0 +1,26 @@
+---
+title: "Contract votingContract1"
+draft: true
+---
+Deployer: SPE07R7HAHY02T0QGSZ8SC2S2D1S02K70DF5EW96
+
+
+ 
+
+
+
+Block height: 5557041 (2025-12-28T13:17:37.000Z)
+
+Source code: {{<contractref "votingContract1" SPE07R7HAHY02T0QGSZ8SC2S2D1S02K70DF5EW96 votingContract1>}}
+
+Functions:
+
+* proposal-active? _private_
+* create-proposal _public_
+* execute-proposal _public_
+* vote _public_
+* get-proposal _read_only_
+* get-proposal-count _read_only_
+* get-user-vote _read_only_
+* get-vote-count _read_only_
+* is-voting-active _read_only_

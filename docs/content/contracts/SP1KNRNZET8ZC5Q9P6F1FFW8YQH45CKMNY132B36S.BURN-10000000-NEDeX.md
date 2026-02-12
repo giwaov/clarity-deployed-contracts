@@ -1,0 +1,18 @@
+---
+title: "Contract BURN-10000000-NEDeX"
+draft: true
+---
+Deployer: SP1KNRNZET8ZC5Q9P6F1FFW8YQH45CKMNY132B36S
+
+
+ 
+
+
+
+Block height: 4646147 (2025-11-08T05:19:25.000Z)
+
+Source code: {{<contractref "BURN-10000000-NEDeX" SP1KNRNZET8ZC5Q9P6F1FFW8YQH45CKMNY132B36S BURN-10000000-NEDeX>}}
+
+Functions:
+
+* send-stx _private_

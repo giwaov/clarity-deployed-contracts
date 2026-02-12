@@ -1,0 +1,21 @@
+---
+title: "Trait sbtc-groups-update"
+draft: true
+---
+```
+(impl-trait .dao-traits.proposal-script)
+
+(define-public (execute)
+  (begin
+
+    ;; Egroup 0: sBTC collateral + USDC+USDh debt (60% LTV)
+    ;; MASK = 2^2 + 2^70 + 2^72 = 4 + 1180591620717411303424 + 4722366482869645213696 = 5902958103587056517124
+    (try! (contract-call? .egroup update u0 { BORROW-DISABLED-MASK: u0, MASK: u5902958103587056517124, LIQ-CURVE-EXP: u10000, LIQ-PENALTY-MIN: u750, LIQ-PENALTY-MAX: u1000, LTV-BORROW: u6000, LTV-LIQ-PARTIAL: u7000, LTV-LIQ-FULL: u7500 }))
+
+    ;; Egroup 3: zsBTC collateral + USDC+USDh debt (60% LTV)
+    ;; MASK = 2^3 + 2^70 + 2^72 = 8 + 5902958103587056517120 = 5902958103587056517128
+    (try! (contract-call? .egroup update u3 { BORROW-DISABLED-MASK: u0, MASK: u5902958103587056517128, LIQ-CURVE-EXP: u10000, LIQ-PENALTY-MIN: u750, LIQ-PENALTY-MAX: u1000, LTV-BORROW: u6000, LTV-LIQ-PARTIAL: u7000, LTV-LIQ-FULL: u7500 }))
+
+    (ok true)))
+
+```

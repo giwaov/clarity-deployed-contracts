@@ -1,0 +1,10 @@
+;; Documents
+(define-map documents uint {owner: principal, title: (string-ascii 100), hash: (string-ascii 64)})
+(define-data-var document-id uint u0)
+(define-public (store-document (title (string-ascii 100)) (hash (string-ascii 64)))
+  (let ((id (var-get document-id)))
+    (map-set documents id {owner: tx-sender, title: title, hash: hash})
+    (var-set document-id (+ id u1))
+    (ok id)))
+(define-read-only (get-document (id uint))
+  (map-get? documents id))

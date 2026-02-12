@@ -1,0 +1,10 @@
+---
+title: "Trait string-utils-v2"
+draft: true
+---
+```
+(define-read-only (concat-strings (a (string-ascii 50)) (b (string-ascii 50)))
+    (ok (concat a b))
+)
+
+```

@@ -1,0 +1,159 @@
+---
+title: "Contract test-state-hbtc-v6"
+draft: true
+---
+Deployer: SP6XGBDAD800GGY6XF48AC27467W9PEHA6EPBGKJ
+
+
+ 
+
+
+
+Block height: 5718567 (2026-01-06T03:27:30.000Z)
+
+Source code: {{<contractref "test-state-hbtc-v6" SP6XGBDAD800GGY6XF48AC27467W9PEHA6EPBGKJ test-state-hbtc-v6>}}
+
+Functions:
+
+* cancel-map-update _private_
+* cancel-update _private_
+* cancel-var-update _private_
+* confirm-map-update _private_
+* confirm-update _private_
+* confirm-var-update _private_
+* consume-express-limit _private_
+* execute-map-update _private_
+* execute-update _private_
+* execute-var-update _private_
+* remove-custom-exit-fee-iter _private_
+* request-map-update _private_
+* request-update _private_
+* request-var-update _private_
+* set-custom-exit-fee-iter _private_
+* update-last-log-ts _private_
+* update-pending-fees _private_
+* update-pending-rf _private_
+* update-shares _private_
+* update-total-assets _private_
+* cancel-asset-request _public_
+* cancel-cooldown-request _public_
+* cancel-express-cooldown-request _public_
+* cancel-express-limit-request _public_
+* cancel-express-window-request _public_
+* cancel-external-request _public_
+* cancel-max-deviation-request _public_
+* cancel-max-reward-request _public_
+* cancel-max-slippage-request _public_
+* cancel-min-redeem-request _public_
+* cancel-update-window-request _public_
+* check-redeem-auth _public_
+* confirm-asset-request _public_
+* confirm-cooldown-request _public_
+* confirm-express-cooldown-request _public_
+* confirm-express-limit-request _public_
+* confirm-express-window-request _public_
+* confirm-external-request _public_
+* confirm-max-deviation-request _public_
+* confirm-max-reward-request _public_
+* confirm-max-slippage-request _public_
+* confirm-min-redeem-request _public_
+* confirm-update-window-request _public_
+* disable-deposits _public_
+* disable-redeem _public_
+* disable-reward _public_
+* disable-trading _public_
+* disable-transfer _public_
+* disable-vault _public_
+* increment-claim-id _public_
+* remove-custom-cooldown _public_
+* remove-custom-exit-fee _public_
+* remove-custom-exit-fee-many _public_
+* request-asset-add _public_
+* request-asset-remove _public_
+* request-cooldown-update _public_
+* request-express-cooldown-update _public_
+* request-express-limit-update _public_
+* request-express-window-update _public_
+* request-external-add _public_
+* request-external-remove _public_
+* request-max-deviation-update _public_
+* request-max-reward-update _public_
+* request-max-slippage-update _public_
+* request-min-redeem-update _public_
+* request-update-window-update _public_
+* set-asset-slippage _public_
+* set-custom-cooldown _public_
+* set-custom-exit-fee _public_
+* set-custom-exit-fee-many _public_
+* set-deposit-cap _public_
+* set-deposit-enabled _public_
+* set-express-enabled _public_
+* set-fee-address _public_
+* set-fees _public_
+* set-min-deposit _public_
+* set-redeem-enabled _public_
+* set-reserve-rate _public_
+* set-reward-enabled _public_
+* set-staleness-window _public_
+* set-trading-enabled _public_
+* set-transfer-enabled _public_
+* set-vault-enabled _public_
+* update-state _public_
+* check-is-asset _read_only_
+* check-is-deposit-enabled _read_only_
+* check-is-express-enabled _read_only_
+* check-is-external _read_only_
+* check-is-redeem-enabled _read_only_
+* check-is-reward-enabled _read_only_
+* check-is-trading-enabled _read_only_
+* check-is-transfer-enabled _read_only_
+* check-is-vault-enabled _read_only_
+* check-max-deviation _read_only_
+* check-max-reward _read_only_
+* check-trading-auth _read_only_
+* check-transfer-auth _read_only_
+* check-update-window _read_only_
+* convert-to-assets _read_only_
+* convert-to-shares _read_only_
+* get-asset _read_only_
+* get-claim-id _read_only_
+* get-cooldown _read_only_
+* get-current-express-limit _read_only_
+* get-custom-cooldown _read_only_
+* get-custom-exit-fee _read_only_
+* get-deposit-cap _read_only_
+* get-deposit-enabled _read_only_
+* get-deposit-state _read_only_
+* get-effective-express-limit _read_only_
+* get-express-cooldown _read_only_
+* get-express-enabled _read_only_
+* get-express-limit _read_only_
+* get-express-window _read_only_
+* get-external _read_only_
+* get-fee-address _read_only_
+* get-fees _read_only_
+* get-last-express-ts _read_only_
+* get-last-log-ts _read_only_
+* get-max-deviation _read_only_
+* get-max-reward _read_only_
+* get-max-slippage _read_only_
+* get-min-deposit _read_only_
+* get-min-redeem _read_only_
+* get-net-assets _read_only_
+* get-pending _read_only_
+* get-pending-fees _read_only_
+* get-pending-rf _read_only_
+* get-redeem-enabled _read_only_
+* get-redeem-state _read_only_
+* get-reserve-rate _read_only_
+* get-reward-enabled _read_only_
+* get-reward-state _read_only_
+* get-share-price _read_only_
+* get-staleness-window _read_only_
+* get-total-assets _read_only_
+* get-trading-enabled _read_only_
+* get-transfer-enabled _read_only_
+* get-update-request _read_only_
+* get-update-request-var _read_only_
+* get-update-window _read_only_
+* get-vault-enabled _read_only_

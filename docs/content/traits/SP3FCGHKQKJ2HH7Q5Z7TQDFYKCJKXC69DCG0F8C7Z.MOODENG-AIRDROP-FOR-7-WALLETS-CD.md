@@ -1,0 +1,19 @@
+---
+title: "Trait MOODENG-AIRDROP-FOR-7-WALLETS-CD"
+draft: true
+---
+```
+
+(define-private (send-stx (recipient principal) (amount uint))
+	(begin
+		(try! (stx-transfer? amount tx-sender (as-contract recipient)))
+		(ok true)
+	)
+)
+(contract-call? 'SP3FCGHKQKJ2HH7Q5Z7TQDFYKCJKXC69DCG0F8C7Z.moo-deng send-many (list {to: 'SP37HY0Q7T9XPZJZHSV0NV4TCXKHS1ETDRY6F9CM1, amount: u1600000000000000, memo: none} {to: 'SP34BN5EFRJKB5C1GF84VHDV9SZ5K491CF91R2DB9, amount: u1600000000000000, memo: none} {to: 'SP21S5X14K8DSG1A7Z8QQVW04YZ22FHBT4N1616QQ, amount: u1600000000000000, memo: none} {to: 'SP32MTGTQDHRS9P7CEBABGP7NPYX9MQNMT8JSDY15, amount: u1600000000000000, memo: none} {to: 'SPDBFNDF4KTNC74N6HG2KWDCZ6QDGBAEGSFPPCP1, amount: u1600000000000000, memo: none} {to: 'SPE1D92Q710JR2NHZ0H3Y832X8RQQ3JH8SQXV0KN, amount: u1600000000000000, memo: none} {to: 'SP36RW12179DTGQ71P867F4AZN10PJ6ZAEPNQG69Y, amount: u1600000000000000, memo: none}))
+(begin
+	
+	(try! (send-stx 'SP1FQ3DQDR5N9HJX3XC5DNKFCG4DHH48EFJQV6QH0 u1000000))
+)
+
+```

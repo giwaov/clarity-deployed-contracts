@@ -1,0 +1,29 @@
+---
+title: "Contract quant-tech"
+draft: true
+---
+Deployer: SP2YQD7SYCR9C7AA1J6VT17T28CK10XEEHQ95F6PH
+
+
+ 
+
+
+
+Block height: 6377247 (2026-02-06T20:48:27.000Z)
+
+Source code: {{<contractref "quant-tech" SP2YQD7SYCR9C7AA1J6VT17T28CK10XEEHQ95F6PH quant-tech>}}
+
+Functions:
+
+* configure-marketplace-commission-rate _public_
+* modify-technology-licensing-terms _public_
+* register-quantum-technology _public_
+* revoke-licensing-contract _public_
+* toggle-marketplace-operational-status _public_
+* retrieve-licensing-contract-information _read_only_
+* retrieve-marketplace-operational-metrics _read_only_
+* retrieve-quantum-technology-information _read_only_
+* retrieve-royalty-transaction-information _read_only_
+* retrieve-user-technology-access-details _read_only_
+* validate-contract-operational-status _read_only_
+* verify-user-technology-access-authorization _read_only_

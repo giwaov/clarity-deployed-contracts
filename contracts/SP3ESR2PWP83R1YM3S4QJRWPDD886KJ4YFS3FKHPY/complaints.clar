@@ -1,0 +1,10 @@
+;; Complaints
+(define-map complaints uint {complainant: principal, target: principal, issue: (string-ascii 300)})
+(define-data-var complaint-id uint u0)
+(define-public (file-complaint (target principal) (issue (string-ascii 300)))
+  (let ((id (var-get complaint-id)))
+    (map-set complaints id {complainant: tx-sender, target: target, issue: issue})
+    (var-set complaint-id (+ id u1))
+    (ok id)))
+(define-read-only (get-complaint (id uint))
+  (map-get? complaints id))

@@ -1,0 +1,10 @@
+;; Categories
+(define-map categories uint {name: (string-ascii 50), parent-id: uint})
+(define-data-var category-id uint u0)
+(define-public (create-category (name (string-ascii 50)) (parent-id uint))
+  (let ((id (var-get category-id)))
+    (map-set categories id {name: name, parent-id: parent-id})
+    (var-set category-id (+ id u1))
+    (ok id)))
+(define-read-only (get-category (id uint))
+  (map-get? categories id))

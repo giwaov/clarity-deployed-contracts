@@ -1,0 +1,19 @@
+---
+title: "Contract invoices"
+draft: true
+---
+Deployer: SP3CGHKW1Q0QXGW8WPG4JGRBQB2T5B7ZQE8QQ0GW2
+
+
+ 
+
+
+
+Block height: 6174983 (2026-01-28T16:48:02.000Z)
+
+Source code: {{<contractref "invoices" SP3CGHKW1Q0QXGW8WPG4JGRBQB2T5B7ZQE8QQ0GW2 invoices>}}
+
+Functions:
+
+* create-invoice _public_
+* get-invoice _read_only_

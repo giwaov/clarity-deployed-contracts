@@ -1,0 +1,17 @@
+---
+title: "Trait announcements-system"
+draft: true
+---
+```
+;; Announcements System
+(define-map system-announcements uint {title: (string-ascii 100), message: (string-ascii 500)})
+(define-data-var announcement-id uint u0)
+(define-public (post-announcement (title (string-ascii 100)) (message (string-ascii 500)))
+  (let ((id (var-get announcement-id)))
+    (map-set system-announcements id {title: title, message: message})
+    (var-set announcement-id (+ id u1))
+    (ok id)))
+(define-read-only (get-announcement (id uint))
+  (map-get? system-announcements id))
+
+```

@@ -1,0 +1,82 @@
+---
+title: "Trait provo"
+draft: true
+---
+```
+(use-trait ft1 'SP2AKWJYC7BNY18W1XXKPGP0YVEK63QJG4793Z2D4.sip-010-trait-ft-standard.sip-010-trait)
+(use-trait xpt1 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-pool-trait-v-1-1.xyk-pool-trait)
+(use-trait sft1 'SP1Y5YSTAHZ88XYK1VPDH24GY0HPX5J4JECTMY4A1.univ2-share-fee-to-trait.share-fee-to-trait)
+(use-trait ft2 'SP2AKWJYC7BNY18W1XXKPGP0YVEK63QJG4793Z2D4.sip-010-trait-ft-standard.sip-010-trait)
+(use-trait xpt2 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-pool-trait-v-1-1.xyk-pool-trait)
+(use-trait sft2 'SP1Y5YSTAHZ88XYK1VPDH24GY0HPX5J4JECTMY4A1.univ2-share-fee-to-trait.share-fee-to-trait)
+
+(define-constant e1 (err u5001))
+(define-constant e2 (err u5002))
+(define-constant e3 (err u5003))
+(define-constant e4 (err u5004))
+(define-constant e5 (err u5005))
+
+(define-public (perseri
+    (a1 uint)
+    (m uint)
+    (p1 (optional principal))
+    (xp1 <xpt1>)
+    (xt1a <ft1>) (xt1b <ft1>)
+    (sr1 bool)
+    (id1 uint)
+    (t1a <ft1>) (t1b <ft1>)
+    (ti1 <ft1>) (to1 <ft1>)
+    (sf1 <sft1>)
+    (a2 (optional uint))
+    (m2 uint)
+    (p2 (optional principal))
+    (xp2 <xpt2>)
+    (xt2a <ft2>) (xt2b <ft2>)
+    (sr2 bool)
+    (id2 uint)
+    (t2a <ft2>) (t2b <ft2>)
+    (ti2 <ft2>) (to2 <ft2>)
+    (sf2 <sft2>)
+  )
+  (let (
+    (r1 (try! (call-a a1 m p1 xp1 xt1a xt1b sr1 id1 t1a t1b ti1 to1 sf1)))
+    (a-for-r2 (if (is-some a2) (unwrap! a2 e5) r1))
+    (r2 (try! (call-b a-for-r2 m2 p2 xp2 xt2a xt2b sr2 id2 t2a t2b ti2 to2 sf2)))
+  )
+    (ok { r1: r1, r2: r2 })
+  )
+)
+
+(define-private (call-a
+    (a1 uint)
+    (m uint)
+    (p1 (optional principal))
+    (xp1 <xpt1>)
+    (xt1a <ft1>) (xt1b <ft1>)
+    (sr1 bool)
+    (id1 uint)
+    (t1a <ft1>) (t1b <ft1>)
+    (ti1 <ft1>) (to1 <ft1>)
+    (sf1 <sft1>)
+  )
+  (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.router-xyk-velar-v-1-2 swap-helper-a
+    a1 m p1 xp1 xt1a xt1b sr1 id1 t1a t1b ti1 to1 sf1)
+)
+
+(define-private (call-b
+    (a2 uint)
+    (m2 uint)
+    (p2 (optional principal))
+    (xp2 <xpt2>)
+    (xt2a <ft2>) (xt2b <ft2>)
+    (sr2 bool)
+    (id2 uint)
+    (t2a <ft2>) (t2b <ft2>)
+    (ti2 <ft2>) (to2 <ft2>)
+    (sf2 <sft2>)
+  )
+  (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.router-xyk-velar-v-1-2 swap-helper-b
+    a2 m2 p2 xp2 xt2a xt2b sr2 id2 t2a t2b ti2 to2 sf2)
+)
+
+```

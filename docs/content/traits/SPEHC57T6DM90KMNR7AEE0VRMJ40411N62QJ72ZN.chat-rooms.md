@@ -1,0 +1,17 @@
+---
+title: "Trait chat-rooms"
+draft: true
+---
+```
+;; Chat Rooms
+(define-map chat-rooms uint {name: (string-ascii 50), owner: principal, private: bool})
+(define-data-var room-id uint u0)
+(define-public (create-room (name (string-ascii 50)) (private bool))
+  (let ((id (var-get room-id)))
+    (map-set chat-rooms id {name: name, owner: tx-sender, private: private})
+    (var-set room-id (+ id u1))
+    (ok id)))
+(define-read-only (get-room (id uint))
+  (map-get? chat-rooms id))
+
+```

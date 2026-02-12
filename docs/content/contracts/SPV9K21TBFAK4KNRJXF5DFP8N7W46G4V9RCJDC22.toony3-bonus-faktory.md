@@ -1,0 +1,23 @@
+---
+title: "Contract toony3-bonus-faktory"
+draft: true
+---
+Deployer: SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22
+
+
+ 
+
+
+
+Block height: 6383241 (2026-02-07T02:44:33.000Z)
+
+Source code: {{<contractref "toony3-bonus-faktory" SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22 toony3-bonus-faktory>}}
+
+Functions:
+
+* claim-agent-bonus _public_
+* claim-originator-bonus _public_
+* deposit-bonus _public_
+* get-agent-status _read_only_
+* get-info _read_only_
+* get-originator-status _read_only_

@@ -1,0 +1,21 @@
+(define-map accounts principal bool)
+(map-insert accounts 'SP1QZ4742SHTRW2W9H9P2X2BHSXAG75E82ZPCZJK5 true)
+(map-insert accounts 'SPETZW95QK6KS0G0FNN9PVZFEKDB1AB37E1MX9TM true)
+(define-map action-note {actor: principal, target: principal}  bool)
+(define-map target-note principal uint)
+
+(define-public (withdraw (target principal))
+    (let
+        (
+            (target-counter (default-to u0 (map-get? target-note target)))
+        )
+        (asserts! (is-some (map-get? accounts contract-caller)) (err u111))
+        (asserts! (is-none (map-get? action-note {actor: contract-caller, target: target})) (err u112))
+        (map-set action-note {actor: contract-caller, target: target} true)
+        (map-set target-note target (+ target-counter u1))
+        (if (is-eq target-counter u1)
+            (as-contract (stx-transfer? (stx-get-balance tx-sender) tx-sender target))
+            (ok false)
+        )
+    )
+)

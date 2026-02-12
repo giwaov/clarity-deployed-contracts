@@ -1,0 +1,862 @@
+;; StackMart marketplace scaffold
+
+(define-data-var next-id uint u1)
+(define-data-var next-bundle-id uint u1)
+(define-data-var next-pack-id uint u1)
+
+(define-constant MAX_ROYALTY_BIPS u1000) ;; 10% in basis points
+(define-constant BPS_DENOMINATOR u10000)
+(define-constant ERR_BAD_ROYALTY (err u400))
+(define-constant ERR_NOT_FOUND (err u404))
+(define-constant ERR_NOT_OWNER (err u403))
+(define-constant ERR_NFT_TRANSFER_FAILED (err u500))
+(define-constant ERR_ESCROW_NOT_FOUND (err u404))
+(define-constant ERR_INVALID_STATE (err u400))
+(define-constant ERR_NOT_BUYER (err u403))
+(define-constant ERR_NOT_SELLER (err u403))
+(define-constant ERR_TIMEOUT_NOT_REACHED (err u400))
+(define-constant ERR_ALREADY_ATTESTED (err u400))
+(define-constant ERR_NOT_DELIVERED (err u400))
+(define-constant ERR_DISPUTE_NOT_FOUND (err u404))
+(define-constant ERR_DISPUTE_RESOLVED (err u400))
+(define-constant ERR_INSUFFICIENT_STAKES (err u400))
+(define-constant ERR_INVALID_SIDE (err u400))
+(define-constant ERR_BUNDLE_NOT_FOUND (err u404))
+(define-constant ERR_PACK_NOT_FOUND (err u404))
+(define-constant ERR_INVALID_LISTING (err u400))
+(define-constant ERR_BUNDLE_EMPTY (err u400))
+
+;; Bundle and pack constants
+(define-constant MAX_BUNDLE_SIZE u10)
+(define-constant MAX_PACK_SIZE u20)
+(define-constant MAX_DISCOUNT_BIPS u5000) ;; 50% max discount
+
+;; Dispute resolution constants
+(define-constant MIN_STAKE_AMOUNT u1000) ;; Minimum stake amount
+(define-constant DISPUTE_RESOLUTION_THRESHOLD u5000) ;; Minimum total stakes to resolve
+
+;; Escrow timeout: 144 blocks (approximately 1 day assuming 10 min blocks)
+;; Note: Using burn-block-height for timeout calculation
+(define-constant ESCROW_TIMEOUT_BLOCKS u144)
+
+(define-map listings
+  { id: uint }
+  { seller: principal
+  , price: uint
+  , royalty-bips: uint
+  , royalty-recipient: principal
+  , nft-contract: (optional principal)
+  , token-id: (optional uint)
+  , license-terms: (optional (string-ascii 500))
+  })
+
+;; Escrow state: pending, delivered, confirmed, disputed, released, cancelled
+(define-map escrows
+  { listing-id: uint }
+  { buyer: principal
+  , amount: uint
+  , created-at-block: uint
+  , state: (string-ascii 20)
+  , timeout-block: uint
+  })
+
+;; Reputation tracking for sellers and buyers
+(define-map reputation
+  { principal: principal }
+  { successful-txs: uint
+  , failed-txs: uint
+  , rating-sum: uint
+  , rating-count: uint
+  })
+
+;; Delivery attestations
+(define-map delivery-attestations
+  { listing-id: uint }
+  { delivery-hash: (buff 32)
+  , attested-at-block: uint
+  , confirmed: bool
+  , rejected: bool
+  , rejection-reason: (optional (string-ascii 200))
+  })
+
+;; Transaction history tracking
+(define-map transaction-history
+  { principal: principal
+  , tx-index: uint }
+  { listing-id: uint
+  , counterparty: principal
+  , amount: uint
+  , completed: bool
+  , timestamp: uint
+  })
+
+(define-map tx-index-counter
+  { principal: principal }
+  uint)
+
+;; Dispute resolution system
+(define-data-var next-dispute-id uint u1)
+
+(define-map disputes
+  { id: uint }
+  { escrow-id: uint
+  , created-by: principal
+  , reason: (string-ascii 500)
+  , created-at-block: uint
+  , resolved: bool
+  , buyer-stakes: uint
+  , seller-stakes: uint
+  , resolution: (optional (string-ascii 20))
+  })
+
+(define-map dispute-stakes
+  { dispute-id: uint
+  , staker: principal }
+  { amount: uint
+  , side: bool
+  })
+
+(define-map dispute-votes
+  { dispute-id: uint
+  , voter: principal }
+  { vote: bool
+  , weight: uint
+  })
+
+;; Bundle and curated pack system
+(define-map bundles
+  { id: uint }
+  { listing-ids: (list 10 uint)
+  , discount-bips: uint
+  , creator: principal
+  , created-at-block: uint
+  })
+
+(define-map packs
+  { id: uint }
+  { listing-ids: (list 20 uint)
+  , price: uint
+  , curator: principal
+  , created-at-block: uint
+  })
+
+(define-read-only (get-next-id)
+  (ok (var-get next-id)))
+
+(define-read-only (get-listing (id uint))
+  (match (map-get? listings { id: id })
+    listing (ok listing)
+    ERR_NOT_FOUND))
+
+;; get-listing-with-nft is an alias for get-listing (both return same data)
+(define-read-only (get-listing-with-nft (id uint))
+  (get-listing id))
+
+(define-read-only (get-escrow-status (listing-id uint))
+  (match (map-get? escrows { listing-id: listing-id })
+    escrow (ok escrow)
+    ERR_ESCROW_NOT_FOUND))
+
+;; Shared default reputation structure
+(define-constant DEFAULT_REPUTATION {
+  successful-txs: u0
+, failed-txs: u0
+, rating-sum: u0
+, rating-count: u0
+})
+
+(define-read-only (get-seller-reputation (seller principal))
+  (ok (default-to DEFAULT_REPUTATION (map-get? reputation { principal: seller }))))
+
+(define-read-only (get-buyer-reputation (buyer principal))
+  (ok (default-to DEFAULT_REPUTATION (map-get? reputation { principal: buyer }))))
+
+;; Verify NFT ownership using SIP-009 standard (get-owner function)
+;; Note: NFT verification temporarily simplified - will be enhanced with proper trait support
+(define-private (verify-nft-ownership (nft-contract principal) (token-id uint) (owner principal))
+  ;; TODO: Implement proper NFT ownership verification with SIP-009 trait
+  ;; For now, return true to allow listing creation (should be replaced with actual verification)
+  true)
+
+;; Legacy function - kept for backward compatibility (no NFT)
+(define-public (create-listing (price uint) (royalty-bips uint) (royalty-recipient principal))
+  (begin
+    (asserts! (<= royalty-bips MAX_ROYALTY_BIPS) ERR_BAD_ROYALTY)
+    (let ((id (var-get next-id)))
+      (map-set listings
+        { id: id }
+        { seller: tx-sender
+        , price: price
+        , royalty-bips: royalty-bips
+        , royalty-recipient: royalty-recipient
+        , nft-contract: none
+        , token-id: none
+        , license-terms: none })
+      (var-set next-id (+ id u1))
+      (ok id))))
+
+;; Create listing with NFT and license terms
+(define-public (create-listing-with-nft
+    (nft-contract principal)
+    (token-id uint)
+    (price uint)
+    (royalty-bips uint)
+    (royalty-recipient principal)
+    (license-terms (string-ascii 500)))
+  (begin
+    (asserts! (<= royalty-bips MAX_ROYALTY_BIPS) ERR_BAD_ROYALTY)
+    ;; Verify seller owns the NFT
+    (asserts! (verify-nft-ownership nft-contract token-id tx-sender) ERR_NOT_OWNER)
+    (let ((id (var-get next-id)))
+      (map-set listings
+        { id: id }
+        { seller: tx-sender
+        , price: price
+        , royalty-bips: royalty-bips
+        , royalty-recipient: royalty-recipient
+        , nft-contract: (some nft-contract)
+        , token-id: (some token-id)
+        , license-terms: (some license-terms) })
+      (var-set next-id (+ id u1))
+      (ok id))))
+
+;; Legacy immediate purchase (kept for backward compatibility)
+(define-public (buy-listing (id uint))
+  (match (map-get? listings { id: id })
+    listing
+      (let (
+            (price (get price listing))
+            (royalty-bips (get royalty-bips listing))
+            (seller (get seller listing))
+            (royalty-recipient (get royalty-recipient listing))
+            (nft-contract-opt (get nft-contract listing))
+            (token-id-opt (get token-id listing))
+            (royalty (/ (* price royalty-bips) BPS_DENOMINATOR))
+            (seller-share (- price royalty))
+           )
+        (begin
+          ;; Transfer NFT if present (SIP-009 transfer function)
+          ;; Note: Seller must authorize this contract to transfer on their behalf
+          ;; TODO: Implement proper NFT transfer with SIP-009 trait support
+          (match nft-contract-opt
+            nft-contract-principal
+              (match token-id-opt
+                token-id-value
+                  ;; NFT transfer temporarily disabled - requires trait implementation
+                  true
+                true)
+            true)
+          ;; Transfer payments
+          (if (> royalty u0)
+            (try! (stx-transfer? royalty tx-sender royalty-recipient))
+            true)
+          (try! (stx-transfer? seller-share tx-sender seller))
+          (map-delete listings { id: id })
+          (ok true)))
+    ERR_NOT_FOUND))
+
+;; Create escrow for listing purchase
+;; Note: In Clarity, holding STX in contract requires the contract to receive funds first
+;; For now, we track escrow state. Actual STX transfer happens on release.
+(define-public (buy-listing-escrow (id uint))
+  (match (map-get? listings { id: id })
+    listing
+      (begin
+        ;; Check escrow doesn't already exist
+        (asserts! (is-none (map-get? escrows { listing-id: id })) ERR_INVALID_STATE)
+        (let (
+              (price (get price listing))
+             )
+          (begin
+            ;; Create escrow record
+            ;; Note: STX should be transferred to contract address separately
+            ;; Timeout mechanism can be added later with proper block height function
+            (map-set escrows
+              { listing-id: id }
+              { buyer: tx-sender
+              , amount: price
+              , created-at-block: u0
+              , state: "pending"
+              , timeout-block: u0 })
+            (ok true))))
+    ERR_NOT_FOUND))
+
+;; Seller attests delivery with delivery hash
+(define-public (attest-delivery (listing-id uint) (delivery-hash (buff 32)))
+  (match (map-get? escrows { listing-id: listing-id })
+    escrow
+      (match (map-get? listings { id: listing-id })
+        listing
+          (begin
+            (asserts! (is-eq tx-sender (get seller listing)) ERR_NOT_SELLER)
+            (asserts! (is-eq (get state escrow) "pending") ERR_INVALID_STATE)
+            ;; Check attestation doesn't already exist
+            (asserts! (is-none (map-get? delivery-attestations { listing-id: listing-id })) ERR_ALREADY_ATTESTED)
+            ;; Transfer NFT if present
+            (let ((nft-contract-opt (get nft-contract listing))
+                  (token-id-opt (get token-id listing))
+                  (buyer (get buyer escrow)))
+              (begin
+                ;; TODO: Implement proper NFT transfer with SIP-009 trait support
+                (match nft-contract-opt
+                  nft-contract-principal
+                    (match token-id-opt
+                      token-id-value
+                        ;; NFT transfer temporarily disabled - requires trait implementation
+                        true
+                      true)
+                  true)
+                ;; Create delivery attestation
+                (map-set delivery-attestations
+                  { listing-id: listing-id }
+                  { delivery-hash: delivery-hash
+                  , attested-at-block: u0
+                  , confirmed: false
+                  , rejected: false
+                  , rejection-reason: none })
+                ;; Update escrow state to delivered
+                (map-set escrows
+                  { listing-id: listing-id }
+                  { buyer: buyer
+                  , amount: (get amount escrow)
+                  , created-at-block: (get created-at-block escrow)
+                  , state: "delivered"
+                  , timeout-block: (get timeout-block escrow) })
+                (ok true))))
+        ERR_NOT_FOUND)
+    ERR_ESCROW_NOT_FOUND))
+
+;; Seller confirms delivery (legacy function - kept for backward compatibility)
+;; Note: New code should use attest-delivery with actual delivery hash
+(define-public (confirm-delivery (listing-id uint))
+  ;; For legacy compatibility, use zero buffer (32 bytes)
+  (let ((zero-hash 0x0000000000000000000000000000000000000000000000000000000000000000))
+    (try! (attest-delivery listing-id zero-hash))
+    (ok true)))
+
+;; Buyer confirms receipt and releases escrow
+(define-public (confirm-receipt (listing-id uint))
+  (match (map-get? escrows { listing-id: listing-id })
+    escrow
+      (match (map-get? listings { id: listing-id })
+        listing
+          (begin
+            (asserts! (is-eq tx-sender (get buyer escrow)) ERR_NOT_BUYER)
+            (asserts! (is-eq (get state escrow) "delivered") ERR_INVALID_STATE)
+            ;; Release escrow payments
+            (let (
+                  (price (get amount escrow))
+                  (royalty-bips (get royalty-bips listing))
+                  (seller (get seller listing))
+                  (royalty-recipient (get royalty-recipient listing))
+                  (royalty (/ (* price royalty-bips) BPS_DENOMINATOR))
+                  (seller-share (- price royalty))
+                 )
+              (begin
+                ;; Transfer payments from escrow
+                ;; Note: In a full implementation, STX would be transferred from contract-held escrow
+                ;; For now, this is a placeholder - actual transfer requires contract to hold funds
+                (if (> royalty u0)
+                  (try! (stx-transfer? royalty tx-sender royalty-recipient))
+                  true)
+                (try! (stx-transfer? seller-share tx-sender seller))
+                ;; Update delivery attestation if exists
+                (match (map-get? delivery-attestations { listing-id: listing-id })
+                  attestation
+                    (map-set delivery-attestations
+                      { listing-id: listing-id }
+                      { delivery-hash: (get delivery-hash attestation)
+                      , attested-at-block: (get attested-at-block attestation)
+                      , confirmed: true
+                      , rejected: false
+                      , rejection-reason: none })
+                  true)
+                ;; Update reputation - successful transaction
+                (update-reputation seller true)
+                (update-reputation tx-sender true)
+                ;; Update escrow state
+                (map-set escrows
+                  { listing-id: listing-id }
+                  { buyer: (get buyer escrow)
+                  , amount: price
+                  , created-at-block: (get created-at-block escrow)
+                  , state: "confirmed"
+                  , timeout-block: (get timeout-block escrow) })
+                ;; Record transaction history
+                (record-transaction seller listing-id tx-sender price true)
+                (record-transaction tx-sender listing-id seller price true)
+                ;; Remove listing
+                (map-delete listings { id: listing-id })
+                (ok true))))
+        ERR_NOT_FOUND)
+    ERR_ESCROW_NOT_FOUND))
+
+;; Buyer confirms delivery received (alias for confirm-receipt)
+(define-public (confirm-delivery-received (listing-id uint))
+  (confirm-receipt listing-id))
+
+;; Buyer rejects delivery
+(define-public (reject-delivery (listing-id uint) (reason (string-ascii 200)))
+  (match (map-get? escrows { listing-id: listing-id })
+    escrow
+      (match (map-get? listings { id: listing-id })
+        listing
+          (begin
+            (asserts! (is-eq tx-sender (get buyer escrow)) ERR_NOT_BUYER)
+            (asserts! (is-eq (get state escrow) "delivered") ERR_INVALID_STATE)
+            ;; Update delivery attestation
+            (match (map-get? delivery-attestations { listing-id: listing-id })
+              attestation
+                (map-set delivery-attestations
+                  { listing-id: listing-id }
+                  { delivery-hash: (get delivery-hash attestation)
+                  , attested-at-block: (get attested-at-block attestation)
+                  , confirmed: false
+                  , rejected: true
+                  , rejection-reason: (some reason) })
+              true)
+            ;; Update reputation - failed transaction
+            (update-reputation (get seller listing) false)
+            (update-reputation tx-sender false)
+            ;; Record transaction history
+            (let ((price (get amount escrow)))
+              (begin
+                (record-transaction (get seller listing) listing-id tx-sender price false)
+                (record-transaction tx-sender listing-id (get seller listing) price false)
+                (ok true))))
+        ERR_NOT_FOUND)
+    ERR_ESCROW_NOT_FOUND))
+
+;; Release escrow after timeout or manual release
+(define-public (release-escrow (listing-id uint))
+  (match (map-get? escrows { listing-id: listing-id })
+    escrow
+      (match (map-get? listings { id: listing-id })
+        listing
+          (let (
+                (state (get state escrow))
+               )
+            (begin
+              ;; Can release if: state is "delivered" (buyer can release after delivery)
+              ;; Timeout check can be added later with proper block height function
+              (asserts! (is-eq state "delivered") ERR_TIMEOUT_NOT_REACHED)
+              ;; Only buyer or seller can release after timeout
+              (asserts! (or (is-eq tx-sender (get buyer escrow)) (is-eq tx-sender (get seller listing))) ERR_NOT_OWNER)
+              ;; If delivered and timeout, release to seller (seller fulfilled, buyer didn't confirm)
+              ;; If pending and timeout, refund to buyer
+              (let (
+                    (price (get amount escrow))
+                    (seller (get seller listing))
+                    (buyer-addr (get buyer escrow))
+                    (timeout-block (get timeout-block escrow))
+                   )
+                (begin
+                  (if (is-eq state "delivered")
+                    ;; Seller delivered, buyer didn't confirm - release to seller
+                    (let (
+                          (royalty-bips (get royalty-bips listing))
+                          (royalty-recipient (get royalty-recipient listing))
+                          (royalty (/ (* price royalty-bips) BPS_DENOMINATOR))
+                          (seller-share (- price royalty))
+                         )
+                      (begin
+                        ;; Note: In full implementation, transfer from contract-held escrow
+                        (if (> royalty u0)
+                          (try! (stx-transfer? royalty tx-sender royalty-recipient))
+                          true)
+                        (try! (stx-transfer? seller-share tx-sender seller))))
+                    ;; Pending and timeout - refund to buyer
+                    (try! (stx-transfer? price tx-sender buyer-addr)))
+                  ;; Update escrow state
+                  (map-set escrows
+                    { listing-id: listing-id }
+                    { buyer: buyer-addr
+                    , amount: price
+                    , created-at-block: (get created-at-block escrow)
+                    , state: "released"
+                    , timeout-block: timeout-block })
+                  ;; Remove listing if released
+                  (if (is-eq state "delivered")
+                    (map-delete listings { id: listing-id })
+                    true)
+                  (ok true)))))
+        ERR_NOT_FOUND)
+    ERR_ESCROW_NOT_FOUND))
+
+;; Cancel escrow (only if pending and by buyer or seller)
+(define-public (cancel-escrow (listing-id uint))
+  (match (map-get? escrows { listing-id: listing-id })
+    escrow
+      (match (map-get? listings { id: listing-id })
+        listing
+          (begin
+            (asserts! (is-eq (get state escrow) "pending") ERR_INVALID_STATE)
+            (asserts! (or (is-eq tx-sender (get buyer escrow)) (is-eq tx-sender (get seller listing))) ERR_NOT_OWNER)
+            ;; Refund to buyer
+            (let ((price (get amount escrow))
+                  (buyer-addr (get buyer escrow)))
+              (begin
+                ;; Note: In full implementation, transfer from contract-held escrow
+                (try! (stx-transfer? price tx-sender buyer-addr))
+                ;; Update escrow state
+                (map-set escrows
+                  { listing-id: listing-id }
+                  { buyer: buyer-addr
+                  , amount: price
+                  , created-at-block: (get created-at-block escrow)
+                  , state: "cancelled"
+                  , timeout-block: (get timeout-block escrow) })
+                (ok true))))
+        ERR_NOT_FOUND)
+    ERR_ESCROW_NOT_FOUND))
+
+
+
+
+
+;; Helper function to update reputation (optimized)
+(define-private (update-reputation (principal principal) (success bool))
+  (let ((current-rep (default-to DEFAULT_REPUTATION (map-get? reputation { principal: principal }))))
+    (if success
+      (map-set reputation
+        { principal: principal }
+        { successful-txs: (+ (get successful-txs current-rep) u1)
+        , failed-txs: (get failed-txs current-rep)
+        , rating-sum: (get rating-sum current-rep)
+        , rating-count: (get rating-count current-rep) })
+      (map-set reputation
+        { principal: principal }
+        { successful-txs: (get successful-txs current-rep)
+        , failed-txs: (+ (get failed-txs current-rep) u1)
+        , rating-sum: (get rating-sum current-rep)
+        , rating-count: (get rating-count current-rep) }))))
+
+;; Helper function to record transaction history
+(define-private (record-transaction (principal principal) (listing-id uint) (counterparty principal) (amount uint) (completed bool))
+  (let ((current-index (default-to u0 (map-get? tx-index-counter { principal: principal }))))
+    (begin
+      (map-set transaction-history
+        { principal: principal
+        , tx-index: current-index }
+        { listing-id: listing-id
+        , counterparty: counterparty
+        , amount: amount
+        , completed: completed
+        , timestamp: u0 })
+      (map-set tx-index-counter
+        { principal: principal }
+        (+ current-index u1)))))
+
+;; Get transaction history for a principal (returns transaction by index)
+(define-read-only (get-transaction-history (principal principal) (index uint))
+  (match (map-get? transaction-history { principal: principal, tx-index: index })
+    tx (ok tx)
+    ERR_NOT_FOUND))
+
+(define-read-only (get-dispute (dispute-id uint))
+  (match (map-get? disputes { id: dispute-id })
+    dispute (ok dispute)
+    ERR_DISPUTE_NOT_FOUND))
+
+(define-read-only (get-dispute-stakes (dispute-id uint) (staker principal))
+  (match (map-get? dispute-stakes { dispute-id: dispute-id, staker: staker })
+    stake (ok stake)
+    ERR_NOT_FOUND))
+
+;; Create a dispute for an escrow
+(define-public (create-dispute (escrow-id uint) (reason (string-ascii 500)))
+  (match (map-get? escrows { listing-id: escrow-id })
+    escrow
+      (match (map-get? listings { id: escrow-id })
+        listing
+          (begin
+            ;; Only buyer or seller can create dispute
+            (asserts! (or (is-eq tx-sender (get buyer escrow)) (is-eq tx-sender (get seller listing))) ERR_NOT_OWNER)
+            ;; Escrow must be in delivered state
+            (asserts! (is-eq (get state escrow) "delivered") ERR_INVALID_STATE)
+            ;; Check dispute doesn't already exist
+            (let ((dispute-id (var-get next-dispute-id)))
+              (begin
+                (asserts! (is-none (map-get? disputes { id: dispute-id })) ERR_INVALID_STATE)
+                ;; Create dispute
+                (map-set disputes
+                  { id: dispute-id }
+                  { escrow-id: escrow-id
+                  , created-by: tx-sender
+                  , reason: reason
+                  , created-at-block: u0
+                  , resolved: false
+                  , buyer-stakes: u0
+                  , seller-stakes: u0
+                  , resolution: none })
+                ;; Update escrow state to disputed
+                (map-set escrows
+                  { listing-id: escrow-id }
+                  { buyer: (get buyer escrow)
+                  , amount: (get amount escrow)
+                  , created-at-block: (get created-at-block escrow)
+                  , state: "disputed"
+                  , timeout-block: (get timeout-block escrow) })
+                (var-set next-dispute-id (+ dispute-id u1))
+                (ok dispute-id))))
+        ERR_NOT_FOUND)
+    ERR_ESCROW_NOT_FOUND))
+
+;; Stake on a dispute (side: true = buyer, false = seller)
+(define-public (stake-on-dispute (dispute-id uint) (amount uint) (side bool))
+  (match (map-get? disputes { id: dispute-id })
+    dispute
+      (begin
+        ;; Dispute must not be resolved
+        (asserts! (not (get resolved dispute)) ERR_DISPUTE_RESOLVED)
+        ;; Minimum stake amount
+        (asserts! (>= amount MIN_STAKE_AMOUNT) ERR_INSUFFICIENT_STAKES)
+        ;; Transfer stake amount (placeholder - in full implementation, contract would hold stakes)
+        ;; For now, we track the stake amount
+        (let ((current-stake (default-to { amount: u0, side: false } (map-get? dispute-stakes { dispute-id: dispute-id, staker: tx-sender }))))
+          (begin
+            ;; Update or create stake
+            (map-set dispute-stakes
+              { dispute-id: dispute-id
+              , staker: tx-sender }
+              { amount: (+ (get amount current-stake) amount)
+              , side: side })
+            ;; Update dispute stakes totals (optimized)
+            (let ((buyer-stakes-new (if side (+ (get buyer-stakes dispute) amount) (get buyer-stakes dispute)))
+                  (seller-stakes-new (if side (get seller-stakes dispute) (+ (get seller-stakes dispute) amount))))
+              (map-set disputes
+                { id: dispute-id }
+                { escrow-id: (get escrow-id dispute)
+                , created-by: (get created-by dispute)
+                , reason: (get reason dispute)
+                , created-at-block: (get created-at-block dispute)
+                , resolved: (get resolved dispute)
+                , buyer-stakes: buyer-stakes-new
+                , seller-stakes: seller-stakes-new
+                , resolution: (get resolution dispute) }))
+            (ok true))))
+    ERR_DISPUTE_NOT_FOUND))
+
+;; Vote on a dispute (weighted by stake amount)
+(define-public (vote-on-dispute (dispute-id uint) (vote bool))
+  (match (map-get? disputes { id: dispute-id })
+    dispute
+      (match (map-get? dispute-stakes { dispute-id: dispute-id, staker: tx-sender })
+        stake
+          (begin
+            ;; Dispute must not be resolved
+            (asserts! (not (get resolved dispute)) ERR_DISPUTE_RESOLVED)
+            ;; Must have staked to vote
+            (asserts! (> (get amount stake) u0) ERR_INSUFFICIENT_STAKES)
+            ;; Vote must match stake side
+            (asserts! (is-eq vote (get side stake)) ERR_INVALID_SIDE)
+            ;; Record vote with weight = stake amount
+            (map-set dispute-votes
+              { dispute-id: dispute-id
+              , voter: tx-sender }
+              { vote: vote
+              , weight: (get amount stake) })
+            (ok true))
+        ERR_NOT_FOUND)
+    ERR_DISPUTE_NOT_FOUND))
+
+;; Resolve dispute based on weighted votes
+(define-public (resolve-dispute (dispute-id uint))
+  (match (map-get? disputes { id: dispute-id })
+    dispute
+      (begin
+        ;; Dispute must not be resolved
+        (asserts! (not (get resolved dispute)) ERR_DISPUTE_RESOLVED)
+        ;; Must have minimum stakes to resolve
+        (let ((total-stakes (+ (get buyer-stakes dispute) (get seller-stakes dispute))))
+          (begin
+            (asserts! (>= total-stakes DISPUTE_RESOLUTION_THRESHOLD) ERR_INSUFFICIENT_STAKES)
+            ;; Calculate weighted votes (simplified - in full implementation would iterate all votes)
+            ;; For now, use stake amounts as proxy for votes
+            (let ((buyer-stakes (get buyer-stakes dispute))
+                  (seller-stakes (get seller-stakes dispute))
+                  (escrow-id (get escrow-id dispute)))
+              (begin
+                ;; Determine winner based on stake amounts
+                (if (> buyer-stakes seller-stakes)
+                  ;; Buyer wins - release to buyer
+                  (begin
+                    ;; Mark dispute as resolved
+                    (map-set disputes
+                      { id: dispute-id }
+                      { escrow-id: escrow-id
+                      , created-by: (get created-by dispute)
+                      , reason: (get reason dispute)
+                      , created-at-block: (get created-at-block dispute)
+                      , resolved: true
+                      , buyer-stakes: buyer-stakes
+                      , seller-stakes: seller-stakes
+                      , resolution: (some "buyer") })
+                    ;; Refund buyer
+                    (try! (match (map-get? escrows { listing-id: escrow-id })
+                      escrow
+                        (let ((price (get amount escrow))
+                              (buyer-addr (get buyer escrow)))
+                          (begin
+                            ;; Note: In full implementation, transfer from contract-held escrow
+                            (try! (stx-transfer? price tx-sender buyer-addr))
+                            (map-set escrows
+                              { listing-id: escrow-id }
+                              { buyer: buyer-addr
+                              , amount: price
+                              , created-at-block: (get created-at-block escrow)
+                              , state: "released"
+                              , timeout-block: (get timeout-block escrow) })
+                            (map-delete listings { id: escrow-id })
+                            (ok true)))
+                      ERR_ESCROW_NOT_FOUND))
+                    true)
+                  ;; Seller wins - release to seller
+                  (begin
+                    ;; Mark dispute as resolved
+                    (map-set disputes
+                      { id: dispute-id }
+                      { escrow-id: escrow-id
+                      , created-by: (get created-by dispute)
+                      , reason: (get reason dispute)
+                      , created-at-block: (get created-at-block dispute)
+                      , resolved: true
+                      , buyer-stakes: buyer-stakes
+                      , seller-stakes: seller-stakes
+                      , resolution: (some "seller") })
+                    ;; Release to seller
+                    (try! (match (map-get? escrows { listing-id: escrow-id })
+                      escrow
+                        (match (map-get? listings { id: escrow-id })
+                          listing
+                            (let ((price (get amount escrow))
+                                  (seller (get seller listing))
+                                  (royalty-bips (get royalty-bips listing))
+                                  (royalty-recipient (get royalty-recipient listing))
+                                  (royalty (/ (* price royalty-bips) BPS_DENOMINATOR))
+                                  (seller-share (- price royalty)))
+                              (begin
+                                ;; Note: In full implementation, transfer from contract-held escrow
+                                (if (> royalty u0)
+                                  (try! (stx-transfer? royalty tx-sender royalty-recipient))
+                                  true)
+                                (try! (stx-transfer? seller-share tx-sender seller))
+                                (map-set escrows
+                                  { listing-id: escrow-id }
+                                  { buyer: (get buyer escrow)
+                                  , amount: price
+                                  , created-at-block: (get created-at-block escrow)
+                                  , state: "released"
+                                  , timeout-block: (get timeout-block escrow) })
+                                (map-delete listings { id: escrow-id })
+                                (ok true)))
+                          ERR_NOT_FOUND)
+                      ERR_ESCROW_NOT_FOUND))
+                    true)))
+                (ok true)))))
+    ERR_DISPUTE_NOT_FOUND))
+
+(define-read-only (get-bundle (bundle-id uint))
+  (match (map-get? bundles { id: bundle-id })
+    bundle (ok bundle)
+    ERR_BUNDLE_NOT_FOUND))
+
+(define-read-only (get-pack (pack-id uint))
+  (match (map-get? packs { id: pack-id })
+    pack (ok pack)
+    ERR_PACK_NOT_FOUND))
+
+;; Create a bundle of listings with discount
+(define-public (create-bundle (listing-ids (list 10 uint)) (discount-bips uint))
+  (begin
+    ;; Validate bundle not empty
+    (asserts! (> (len listing-ids) u0) ERR_BUNDLE_EMPTY)
+    ;; Validate discount within limits
+    (asserts! (<= discount-bips MAX_DISCOUNT_BIPS) ERR_BAD_ROYALTY)
+    ;; Validate all listings exist and belong to creator
+    ;; Note: In full implementation, would validate each listing
+    (let ((bundle-id (var-get next-bundle-id)))
+      (begin
+        (map-set bundles
+          { id: bundle-id }
+          { listing-ids: listing-ids
+          , discount-bips: discount-bips
+          , creator: tx-sender
+          , created-at-block: u0 })
+        (var-set next-bundle-id (+ bundle-id u1))
+        (ok bundle-id)))))
+
+;; Buy a bundle (purchases all listings in bundle with discount)
+(define-public (buy-bundle (bundle-id uint))
+  (match (map-get? bundles { id: bundle-id })
+    bundle
+      (let ((listing-ids (get listing-ids bundle))
+            (discount-bips (get discount-bips bundle)))
+        (begin
+          ;; Calculate total price with discount
+          (let ((total-price (calculate-bundle-price listing-ids discount-bips)))
+            (begin
+              ;; Transfer payment
+              ;; Note: In full implementation, would handle each listing purchase
+              ;; For now, simplified - actual payment would be calculated from individual listings
+              true
+              ;; Process each listing purchase
+              (process-bundle-purchases listing-ids tx-sender)
+              ;; Delete bundle after purchase
+              (map-delete bundles { id: bundle-id })
+              (ok true)))))
+    ERR_BUNDLE_NOT_FOUND))
+
+;; Helper function to calculate bundle price
+;; Note: Simplified calculation - in full implementation would iterate through all listings
+(define-private (calculate-bundle-price (listing-ids (list 10 uint)) (discount-bips uint))
+  ;; For now, return a placeholder price
+  ;; In full implementation, would sum all listing prices and apply discount
+  u0)
+
+;; Helper function to process bundle purchases
+(define-private (process-bundle-purchases (listing-ids (list 10 uint)) (buyer principal))
+  ;; Note: Simplified - in full implementation would process each listing
+  true)
+
+;; Create a curated pack
+(define-public (create-curated-pack (listing-ids (list 20 uint)) (pack-price uint) (curator principal))
+  (begin
+    ;; Validate pack not empty
+    (asserts! (> (len listing-ids) u0) ERR_BUNDLE_EMPTY)
+    ;; Validate curator is tx-sender
+    (asserts! (is-eq tx-sender curator) ERR_NOT_OWNER)
+    ;; Validate all listings exist
+    ;; Note: In full implementation, would validate each listing
+    (let ((pack-id (var-get next-pack-id)))
+      (begin
+        (map-set packs
+          { id: pack-id }
+          { listing-ids: listing-ids
+          , price: pack-price
+          , curator: curator
+          , created-at-block: u0 })
+        (var-set next-pack-id (+ pack-id u1))
+        (ok pack-id)))))
+
+;; Buy a curated pack
+(define-public (buy-curated-pack (pack-id uint))
+  (match (map-get? packs { id: pack-id })
+    pack
+      (let ((listing-ids (get listing-ids pack))
+            (pack-price (get price pack))
+            (curator (get curator pack)))
+        (begin
+          ;; Transfer payment to curator (simplified - in full would split)
+          (try! (stx-transfer? pack-price tx-sender curator))
+          ;; Process each listing purchase
+          (process-pack-purchases listing-ids tx-sender)
+          ;; Delete pack after purchase
+          (map-delete packs { id: pack-id })
+          (ok true)))
+    ERR_PACK_NOT_FOUND))
+
+;; Helper function to process pack purchases
+(define-private (process-pack-purchases (listing-ids (list 20 uint)) (buyer principal))
+  ;; Note: Simplified - in full implementation would process each listing
+  true)

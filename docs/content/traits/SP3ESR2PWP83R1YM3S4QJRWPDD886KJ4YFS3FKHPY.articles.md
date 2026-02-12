@@ -1,0 +1,17 @@
+---
+title: "Trait articles"
+draft: true
+---
+```
+;; Articles
+(define-map articles uint {author: principal, title: (string-ascii 100), published: bool})
+(define-data-var article-id uint u0)
+(define-public (create-article (title (string-ascii 100)))
+  (let ((id (var-get article-id)))
+    (map-set articles id {author: tx-sender, title: title, published: false})
+    (var-set article-id (+ id u1))
+    (ok id)))
+(define-read-only (get-article (id uint))
+  (map-get? articles id))
+
+```

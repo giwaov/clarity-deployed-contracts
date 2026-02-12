@@ -1,0 +1,17 @@
+---
+title: "Trait messages"
+draft: true
+---
+```
+;; Messages
+(define-map messages uint {sender: principal, recipient: principal, content: (string-ascii 500)})
+(define-data-var message-id uint u0)
+(define-public (send-message (recipient principal) (content (string-ascii 500)))
+  (let ((id (var-get message-id)))
+    (map-set messages id {sender: tx-sender, recipient: recipient, content: content})
+    (var-set message-id (+ id u1))
+    (ok id)))
+(define-read-only (get-message (id uint))
+  (map-get? messages id))
+
+```
